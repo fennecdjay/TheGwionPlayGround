@@ -1,0 +1,4 @@
+<span class="bold">file.gw</span>:1:0: <span class="bold"><span class="f1">error[E0129]</span></span>: file is empty.
+    1 <span class="bold"><span class="f1">┃</span></span> 
+      <span class="bold"><span class="f1">┃</span></span> <span class="bold"><span class="f1">│</span></span>
+while compiling file `file.gw`

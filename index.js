@@ -2,15 +2,12 @@ const http = require('http');
 const { execSync, spawn } = require('child_process');
 const fs = require('fs')
 
-
 function run(cwd, command) {
   try {
-    var res = execSync(command, { cwd, encoding: "utf8" });}
-  catch (e) {
-    console.log("execSync errors while running:", command);
-    console.log(e);
-  } 
-  return res;
+    return execSync(command, { cwd, encoding: "utf8" });
+  } catch (err) {
+    console.log(err);
+  }
 }
 
 function read(tmpdir) {
@@ -21,38 +18,14 @@ function read(tmpdir) {
   }
 }
 
-http.createServer((request, response) => {
-if(request.url === "/") {
-  let body = [];
-  request.on('error', (err) => {
-    console.error(err);
-  }).on('data', (chunk) => {
-    body.push(chunk);
-  }).on('end', () => {
-    body = Buffer.concat(body).toString();
-const code = body;
-    const tmpdir = run('.', 'mktemp -d workspace/XXXXXXXX').slice(0, -1);
-    const gwion = spawn('bash', ['./run.sh', tmpdir, code]);
-  gwion.on('close', (code) => {
- //   if (code) {
- //     message.reply(`something went wrong`);
- //     run('.', 'rm -rf ' + tmpdir);
- //     return;
- //   }
-const result= `${ read(tmpdir) }<br><audio controls src="https://TheGwionPlayGround.fennecdjay.repl.co/${tmpdir}/gwion.mp3" type="audio/mp3">Your browser does not support the audio element.</audio>`;
-      response.setHeader("Access-Control-Allow-Origin", "*");
-      response.end(JSON.stringify(result));
-      spawn('bash', ['./clean.sh', tmpdir]);
-  });
-  });
-} else {
+function serve_static(request, response) {
   const url = __dirname + request.url;
   if(url.indexOf('..') != -1 || url.indexOf('\0') != -1) {
     response.writeHead(404);
     response.end("invalid request");
     return;
   }
-  fs.readFile(__dirname + request.url, function (err,data) {
+  fs.readFile(__dirname + request.url, function (err, data) {
     if (err) {
       response.writeHead(404);
       response.end(JSON.stringify(err));
@@ -63,5 +36,57 @@ const result= `${ read(tmpdir) }<br><audio controls src="https://TheGwionPlayGro
   });
 }
 
+function has_mp3(tmpdir) {
+  var present = run('.', `test -f ${ tmpdir }/gwion.mp3 || echo 'Nope'`);
+  if(present.indexOf('Nope') == -1)
+    return true;
+  return false;
+}
 
+function build_log(tmpdir) {
+  const log = read(tmpdir);
+  if(!has_mp3(tmpdir))
+    return log;
+  return `${ log }<br><audio controls src="https://TheGwionPlayGround.fennecdjay.repl.co/${tmpdir}/gwion.mp3" type="audio/mp3">Your browser does not support the audio element.</audio>`;
+}
+
+/* the command exited with an error code
+ * respond with some error message
+ * and clean up
+ */
+function smth_happened(response, tmpdir) {
+  response.end(JSON.stringify(`something went wrong`));
+  run('.', 'rm -rf ' + tmpdir);
+}
+
+/* the command succeded
+ * respond and clean up (later)
+ */
+function respond(response, tmpdir) {
+  const log = build_log(tmpdir);
+  response.end(JSON.stringify(log));
+  spawn('bash', ['./clean.sh', tmpdir]);
+}
+
+http.createServer((request, response) => {
+  if(request.url === "/") {
+    let body = [];
+    request.on('error', (err) => {
+      console.error(err);
+    }).on('data', (chunk) => {
+      body.push(chunk);
+    }).on('end', () => {
+      const code = Buffer.concat(body).toString();
+      const tmpdir = run('.', 'mktemp -d workspace/XXXXXXXX').slice(0, -1);
+      response.setHeader("Access-Control-Allow-Origin", "*");
+      const gwion = spawn('bash', ['./run.sh', tmpdir, code]);
+      gwion.on('close', (code) => {
+        if (!code)
+          respond(response, tmpdir);
+        else
+          smth_happened(response, tmpdir);
+      });
+    });
+  } else
+    serve_static(request, response);
 }).listen(8080);
