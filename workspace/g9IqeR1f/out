@@ -1,7 +1,0 @@
-<span class="bold">file.gw</span>:8:0: <span class="bold"><span class="f1">error</span></span>: Invalid variable
-    8 <span class="bold"><span class="f1">┃</span></span> <span class="bold"><span class="f1">qsdqsd</span></span>;
-      <span class="bold"><span class="f1">┃</span></span> <span class="bold"><span class="f1">╭─────</span></span>
-      <span class="bold"><span class="f1">┃</span></span> <span class="bold"><span class="f1">╵</span></span>
-      <span class="bold"><span class="f1">┃</span></span> not legit at this point.
-did you mean:
-while compiling file `file.gw`

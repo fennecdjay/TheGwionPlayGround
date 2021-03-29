@@ -2,6 +2,7 @@ const http = require('http');
 const { execSync, spawn } = require('child_process');
 const fs = require('fs')
 
+/* run command helper */
 function run(cwd, command) {
   try {
     return execSync(command, { cwd, encoding: "utf8" });
@@ -10,14 +11,7 @@ function run(cwd, command) {
   }
 }
 
-function read(tmpdir) {
-  try {
-    return fs.readFileSync(`${tmpdir}/out`, 'utf8');
-  } catch (err) {
-    console.error(err);
-  }
-}
-
+/* serve static files, eg mp3s */
 function serve_static(request, response) {
   const url = __dirname + request.url;
   if(url.indexOf('..') != -1 || url.indexOf('\0') != -1) {
@@ -36,6 +30,16 @@ function serve_static(request, response) {
   });
 }
 
+/* read the logs */
+function read(tmpdir) {
+  try {
+    return fs.readFileSync(`${tmpdir}/out`, 'utf8');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+/* check if there is an mp3 */
 function has_mp3(tmpdir) {
   var present = run('.', `test -f ${ tmpdir }/gwion.mp3 || echo 'Nope'`);
   if(present.indexOf('Nope') == -1)
@@ -43,6 +47,11 @@ function has_mp3(tmpdir) {
   return false;
 }
 
+
+/* return the logs
+ * if there is an mp3
+ * add a player to the response
+ */
 function build_log(tmpdir) {
   const log = read(tmpdir);
   if(!has_mp3(tmpdir))
@@ -79,7 +88,7 @@ http.createServer((request, response) => {
       const code = Buffer.concat(body).toString();
       const tmpdir = run('.', 'mktemp -d workspace/XXXXXXXX').slice(0, -1);
       response.setHeader("Access-Control-Allow-Origin", "*");
-      const gwion = spawn('bash', ['./run.sh', tmpdir, code]);
+      const gwion = spawn('bash', ['./scripts/run.sh', tmpdir, code]);
       gwion.on('close', (code) => {
         if (!code)
           respond(response, tmpdir);
